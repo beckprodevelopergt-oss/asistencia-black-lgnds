@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Black Legends — Registro de Asistencia</title>
+<!-- VERSION: martes-semana-actual-sin-desafio12-bloqueo-definitivo -->
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -95,7 +96,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .cal-day.tuesday.selected::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--green)}
 .cal-day.past{opacity:.28;cursor:not-allowed!important;pointer-events:none}
 .cal-hint{margin-top:10px;font-size:12px;color:var(--plata-op);font-style:italic;text-align:center}
-.special-btn{margin-top:14px;width:100%;padding:12px;background:var(--gold-bg);border:1px solid rgba(251,191,36,.25);border-radius:3px;color:var(--gold);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.special-btn{display:none!important;margin-top:14px;width:100%;padding:12px;background:var(--gold-bg);border:1px solid rgba(251,191,36,.25);border-radius:3px;color:var(--gold);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .2s}
 .special-btn:hover{background:rgba(251,191,36,.18);border-color:var(--gold)}
 .special-btn.active{background:rgba(251,191,36,.2);border-color:var(--gold);box-shadow:0 0 20px rgba(251,191,36,.1)}
 .sel-display{margin-top:10px;text-align:center;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--green);min-height:18px}
@@ -198,9 +199,9 @@ footer{text-align:center;padding:28px;color:var(--bg-piedra);font-size:11px;font
     <div class="card locked" id="c2">
       <div class="card-lbl">II — Selecciona la fecha de la sesión</div>
       <div class="cal-header">
-        <button class="cal-nav" id="prevBtn" onclick="changeMonth(-1)">&#8249;</button>
+        <button class="cal-nav" id="prevBtn" disabled>&#8249;</button>
         <span class="cal-month" id="calMonthLabel"></span>
-        <button class="cal-nav" id="nextBtn" onclick="changeMonth(1)">&#8250;</button>
+        <button class="cal-nav" id="nextBtn" disabled>&#8250;</button>
       </div>
       <div class="cal-grid" id="calDays"></div>
       <div class="cal-hint">&#9711; Solo puedes seleccionar el martes de la semana en curso</div>
@@ -418,9 +419,10 @@ function renderCal() {
 }
 
 function changeMonth(dir) {
-  calM += dir;
-  if (calM > 11) { calM=0; calY++; }
-  if (calM < 0)  { calM=11; calY--; }
+  // Deshabilitado: el calendario queda fijo en el mes actual
+  // para evitar seleccionar martes fuera de la semana en curso.
+  calY = TODAY.getFullYear();
+  calM = TODAY.getMonth();
   renderCal();
 }
 
@@ -431,7 +433,21 @@ function fmtLabel(d) {
   return `${DOWS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 function pickDate(dateStr, label) {
-  S.date = dateStr; S.dateLabel = label;
+  // BLOQUEO DEFINITIVO:
+  // Aunque alguien intente dar clic, modificar el HTML o usar un botón viejo,
+  // solo se acepta el martes exacto de la semana en curso.
+  if (dateStr !== ALLOWED_TUESDAY_STR) {
+    S.date = null;
+    S.dateLabel = null;
+    specialActive = false;
+    document.getElementById('selDisplay').textContent = `Solo puedes seleccionar el martes de esta semana: ${fmtLabel(currentWeekTuesday())}`;
+    renderCal();
+    updateConfirm();
+    return;
+  }
+
+  S.date = dateStr;
+  S.dateLabel = label;
   specialActive = false;
   const specialBtn = document.getElementById('specialBtn');
   if (specialBtn) specialBtn.classList.remove('active');
