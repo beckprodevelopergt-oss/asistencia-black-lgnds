@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Legends — Registro de Asistencia</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg-main:    #060606;
+    --bg-carbon:  #0E0E0E;
+    --bg-grafito: #1E1E1E;
+    --bg-acero:   #323131;
+    --bg-piedra:  #4E4D4C;
+    --plata-op:   #73716E;
+    --plata-env:  #A19A8E;
+    --ivory:      #D6CEC1;
+    --green:      #4ADE80;
+    --green-bg:   rgba(74,222,128,0.12);
+    --red:        #F87171;
+    --red-bg:     rgba(248,113,113,0.12);
+    --gold:       #FBBF24;
+    --gold-bg:    rgba(251,191,36,0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-main);
+    color: var(--ivory);
+    font-family: 'EB Garamond', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE TEXTURE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+    opacity: 0.35;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: relative;
+    width: 100%;
+    background: var(--bg-carbon);
+    border-bottom: 1px solid var(--bg-acero);
+    overflow: hidden;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 36px;
+    text-align: center;
+    position: relative; z-index: 1;
+  }
+
+  /* Ornamental lines */
+  .orn-line {
+    display: flex; align-items: center; gap: 16px;
+    justify-content: center; margin: 12px 0;
+  }
+  .orn-line::before, .orn-line::after {
+    content: '';
+    flex: 1; max-width: 120px;
+    height: 1px; background: linear-gradient(90deg, transparent, var(--plata-op));
+  }
+  .orn-line::after { background: linear-gradient(90deg, var(--plata-op), transparent); }
+  .orn-diamond { color: var(--plata-op); font-size: 10px; letter-spacing: 6px; }
+
+  .brand-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 900;
+    color: var(--ivory);
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    text-shadow: 0 0 60px rgba(214,206,193,0.15);
+  }
+  .brand-sub {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(11px, 1.8vw, 14px);
+    color: var(--plata-env);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .shield-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 20px rgba(214,206,193,0.3));
+  }
+
+  /* corner ornaments */
+  .corner { position: absolute; font-size: 22px; color: var(--bg-piedra); opacity: .6; }
+  .corner.tl { top: 16px; left: 20px; }
+  .corner.tr { top: 16px; right: 20px; }
+
+  /* ── MAIN CONTAINER ── */
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    position: relative; z-index: 1;
+  }
+
+  /* ── STEP INDICATOR ── */
+  .steps {
+    display: flex; gap: 0; margin-bottom: 40px;
+    border: 1px solid var(--bg-acero); border-radius: 4px; overflow: hidden;
+  }
+  .step {
+    flex: 1; padding: 12px 8px; text-align: center;
+    background: var(--bg-carbon);
+    font-family: 'Cinzel', serif; font-size: 11px;
+    letter-spacing: 0.1em; color: var(--bg-piedra);
+    transition: all .3s; position: relative;
+    border-right: 1px solid var(--bg-acero);
+  }
+  .step:last-child { border-right: none; }
+  .step.active { background: var(--bg-grafito); color: var(--ivory); }
+  .step.done { background: rgba(74,222,128,0.08); color: var(--green); }
+  .step-num {
+    display: block; font-size: 18px; font-weight: 700;
+    margin-bottom: 2px; font-family: 'Cinzel Decorative', serif;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg-carbon);
+    border: 1px solid var(--bg-acero);
+    border-radius: 6px; padding: 36px 32px;
+    margin-bottom: 24px;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--plata-op), transparent);
+  }
+  .card-title {
+    font-family: 'Cinzel', serif;
+    font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--plata-env); margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--bg-acero); }
+
+  /* ── FORM ELEMENTS ── */
+  .field { margin-bottom: 24px; }
+  label {
+    display: block;
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--plata-env); margin-bottom: 10px;
+  }
+
+  select, input[type="text"] {
+    width: 100%;
+    background: var(--bg-grafito);
+    border: 1px solid var(--bg-acero);
+    border-radius: 3px;
+    color: var(--ivory);
+    font-family: 'EB Garamond', serif; font-size: 16px;
+    padding: 14px 16px;
+    outline: none;
+    appearance: none;
+    transition: border-color .2s, background .2s;
+    cursor: pointer;
+  }
+  select:focus, input[type="text"]:focus {
+    border-color: var(--plata-op);
+    background: var(--bg-acero);
+  }
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '⌄';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    color: var(--plata-op); pointer-events: none; font-size: 18px;
+  }
+
+  /* Name search */
+  .name-search-wrap { position: relative; }
+  #nameSearch {
+    background: var(--bg-grafito);
+    border: 1px solid var(--bg-acero);
+    border-radius: 3px;
+    color: var(--ivory);
+    font-family: 'EB Garamond', serif; font-size: 16px;
+    padding: 14px 16px;
+    width: 100%; outline: none;
+    transition: border-color .2s;
+  }
+  #nameSearch:focus { border-color: var(--plata-op); }
+  #nameSearch::placeholder { color: var(--bg-piedra); font-style: italic; }
+
+  .dropdown-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+    background: var(--bg-grafito);
+    border: 1px solid var(--bg-acero); border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 240px; overflow-y: auto;
+    display: none;
+  }
+  .dropdown-list.open { display: block; }
+  .dropdown-item {
+    padding: 12px 16px;
+    font-family: 'EB Garamond', serif; font-size: 15px;
+    color: var(--ivory); cursor: pointer;
+    border-bottom: 1px solid var(--bg-acero);
+    transition: background .15s;
+  }
+  .dropdown-item:hover, .dropdown-item.highlighted {
+    background: var(--bg-acero); color: var(--ivory);
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .no-results { padding: 12px 16px; color: var(--plata-op); font-style: italic; font-size: 14px; }
+
+  /* ── SESSION PILLS ── */
+  .sessions-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .session-pill {
+    background: var(--bg-grafito);
+    border: 1px solid var(--bg-acero);
+    border-radius: 4px; padding: 14px 10px;
+    text-align: center; cursor: pointer;
+    transition: all .2s; position: relative;
+    font-family: 'Cinzel', serif;
+  }
+  .session-pill:hover { border-color: var(--plata-op); background: var(--bg-acero); }
+  .session-pill.selected {
+    border-color: var(--ivory);
+    background: rgba(214,206,193,0.07);
+    box-shadow: 0 0 20px rgba(214,206,193,0.06);
+  }
+  .session-pill.selected::before {
+    content: '✓'; position: absolute; top: 6px; right: 8px;
+    color: var(--green); font-size: 11px; font-family: sans-serif;
+  }
+  .pill-date { font-size: 13px; color: var(--ivory); letter-spacing: 0.05em; }
+  .pill-label { font-size: 9px; color: var(--plata-op); letter-spacing: 0.2em; margin-top: 4px; text-transform: uppercase; }
+
+  /* ── STATUS BUTTONS ── */
+  .status-btns { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .status-btn {
+    padding: 20px 12px; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent;
+    text-align: center; transition: all .2s;
+    font-family: 'Cinzel', serif;
+    position: relative; overflow: hidden;
+  }
+  .status-btn .status-letter {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 32px; font-weight: 700; display: block; line-height: 1;
+    margin-bottom: 6px;
+  }
+  .status-btn .status-label { font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; }
+
+  .btn-p { background: var(--green-bg); border-color: rgba(74,222,128,0.2); color: var(--green); }
+  .btn-p:hover, .btn-p.active { background: rgba(74,222,128,0.2); border-color: var(--green); box-shadow: 0 0 24px rgba(74,222,128,0.15); }
+
+  .btn-a { background: var(--red-bg); border-color: rgba(248,113,113,0.2); color: var(--red); }
+  .btn-a:hover, .btn-a.active { background: rgba(248,113,113,0.2); border-color: var(--red); box-shadow: 0 0 24px rgba(248,113,113,0.15); }
+
+  .btn-j { background: var(--gold-bg); border-color: rgba(251,191,36,0.2); color: var(--gold); }
+  .btn-j:hover, .btn-j.active { background: rgba(251,191,36,0.2); border-color: var(--gold); box-shadow: 0 0 24px rgba(251,191,36,0.1); }
+
+  /* ── CONFIRM CARD ── */
+  .confirm-card {
+    background: var(--bg-grafito);
+    border: 1px solid var(--bg-acero); border-radius: 4px;
+    padding: 20px 24px; margin-bottom: 24px;
+    display: none;
+  }
+  .confirm-card.show { display: block; }
+  .confirm-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--bg-acero);
+    font-size: 15px;
+  }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-label { color: var(--plata-op); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .confirm-value { color: var(--ivory); font-weight: 600; }
+  .status-badge {
+    display: inline-block; padding: 3px 14px; border-radius: 20px;
+    font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+  .badge-p { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+  .badge-a { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+  .badge-j { background: var(--gold-bg); color: var(--gold); border: 1px solid rgba(251,191,36,0.3); }
+
+  /* ── CTA BUTTON ── */
+  .cta-btn {
+    width: 100%; padding: 18px;
+    background: var(--ivory); color: var(--bg-main);
+    border: none; border-radius: 4px; cursor: pointer;
+    font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .cta-btn:hover:not(:disabled) {
+    background: #fffff0;
+    box-shadow: 0 0 40px rgba(214,206,193,0.25);
+    transform: translateY(-1px);
+  }
+  .cta-btn:disabled {
+    background: var(--bg-acero); color: var(--bg-piedra); cursor: not-allowed; transform: none; box-shadow: none;
+  }
+  .cta-btn.loading::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.3) 50%, transparent 100%);
+    animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+  /* ── SUCCESS STATE ── */
+  .success-screen {
+    display: none; text-align: center; padding: 48px 24px;
+  }
+  .success-screen.show { display: block; }
+  .success-icon { font-size: 64px; margin-bottom: 16px; animation: pop .4s cubic-bezier(.3,1.4,.6,1); }
+  @keyframes pop { from { transform: scale(0); opacity:0; } to { transform: scale(1); opacity:1; } }
+  .success-title {
+    font-family: 'Cinzel Decorative', serif; font-size: 22px;
+    color: var(--green); margin-bottom: 8px;
+  }
+  .success-sub { color: var(--plata-env); font-size: 16px; line-height: 1.6; }
+
+  .btn-new {
+    display: inline-block; margin-top: 28px;
+    padding: 14px 36px; border: 1px solid var(--bg-acero);
+    border-radius: 3px; cursor: pointer;
+    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--plata-env); background: var(--bg-grafito);
+    transition: all .2s;
+  }
+  .btn-new:hover { border-color: var(--plata-op); color: var(--ivory); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 32px 24px;
+    color: var(--bg-piedra); font-size: 12px;
+    font-family: 'Cinzel', serif; letter-spacing: 0.15em;
+    border-top: 1px solid var(--bg-grafito);
+    position: relative; z-index: 1;
+  }
+
+  /* ── SCROLL ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-carbon); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-acero); border-radius: 3px; }
+
+  /* ── FADE IN ANIMATION ── */
+  .card { animation: fadeUp .4s ease both; }
+  .card:nth-child(2) { animation-delay: .05s; }
+  .card:nth-child(3) { animation-delay: .10s; }
+  .card:nth-child(4) { animation-delay: .15s; }
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(16px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="corner tl">♛ ✕ ⚔</div>
+  <div class="corner tr">♛ ✕ ⚔</div>
+  <div class="header-inner">
+    <div class="shield-icon">🛡</div>
+    <h1 class="brand-title">BLACK LEGENDS</h1>
+    <div class="orn-line"><span class="orn-diamond">✦ ✦ ✦</span></div>
+    <p class="brand-sub">Registro de Asistencia — Desafío Silver</p>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- STEPS -->
+  <div class="steps">
+    <div class="step active" id="step1"><span class="step-num">I</span>Nombre</div>
+    <div class="step" id="step2"><span class="step-num">II</span>Sesión</div>
+    <div class="step" id="step3"><span class="step-num">III</span>Estado</div>
+    <div class="step" id="step4"><span class="step-num">IV</span>Confirmar</div>
+  </div>
+
+  <!-- FORM SCREEN -->
+  <div id="formScreen">
+
+    <!-- STEP 1: NAME -->
+    <div class="card" id="cardName">
+      <div class="card-title">I — Identifícate</div>
+      <div class="field">
+        <label>Busca tu nombre</label>
+        <div class="name-search-wrap">
+          <input type="text" id="nameSearch" placeholder="Escribe tu nombre..." autocomplete="off">
+          <div class="dropdown-list" id="nameDropdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: SESSION -->
+    <div class="card" id="cardSession" style="opacity:.4;pointer-events:none">
+      <div class="card-title">II — Sesión</div>
+      <div class="sessions-grid" id="sessionsGrid">
+        <div class="session-pill" data-session="02/05/2026" data-col="C" onclick="selectSession(this)">
+          <div class="pill-date">02/05/2026</div>
+          <div class="pill-label">Sesión I</div>
+        </div>
+        <div class="session-pill" data-session="12/05/2026" data-col="D" onclick="selectSession(this)">
+          <div class="pill-date">12/05/2026</div>
+          <div class="pill-label">Sesión II</div>
+        </div>
+        <div class="session-pill" data-session="19/05/2026" data-col="E" onclick="selectSession(this)">
+          <div class="pill-date">19/05/2026</div>
+          <div class="pill-label">Sesión III</div>
+        </div>
+        <div class="session-pill" data-session="26/05/2026" data-col="F" onclick="selectSession(this)">
+          <div class="pill-date">26/05/2026</div>
+          <div class="pill-label">Sesión IV</div>
+        </div>
+        <div class="session-pill" data-session="DESAFÍO 12H ORACIÓN" data-col="G" onclick="selectSession(this)">
+          <div class="pill-date">DESAFÍO</div>
+          <div class="pill-label">12H Oración</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: STATUS -->
+    <div class="card" id="cardStatus" style="opacity:.4;pointer-events:none">
+      <div class="card-title">III — Estado de Asistencia</div>
+      <div class="status-btns">
+        <div class="status-btn btn-p" onclick="selectStatus('P', this)">
+          <span class="status-letter">P</span>
+          <span class="status-label">Presente</span>
+        </div>
+        <div class="status-btn btn-a" onclick="selectStatus('A', this)">
+          <span class="status-letter">A</span>
+          <span class="status-label">Ausente</span>
+        </div>
+        <div class="status-btn btn-j" onclick="selectStatus('J', this)">
+          <span class="status-letter">J</span>
+          <span class="status-label">Justificado</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: CONFIRM -->
+    <div class="card" id="cardConfirm" style="opacity:.4;pointer-events:none">
+      <div class="card-title">IV — Confirmar Registro</div>
+      <div class="confirm-card show" id="confirmSummary">
+        <div class="confirm-row">
+          <span class="confirm-label">Leyendario</span>
+          <span class="confirm-value" id="cName">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Sesión</span>
+          <span class="confirm-value" id="cSession">—</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Estado</span>
+          <span id="cStatus">—</span>
+        </div>
+      </div>
+      <button class="cta-btn" id="downloadBtn" onclick="generateExcel()" disabled>
+        ⬇ Descargar Registro Actualizado
+      </button>
+    </div>
+
+  </div><!-- /formScreen -->
+
+  <!-- SUCCESS SCREEN -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">⚔️</div>
+    <div class="success-title">¡Registro Completado!</div>
+    <p class="success-sub">Tu asistencia ha sido guardada.<br>Entrega el archivo Excel al líder de tu grupo.</p>
+    <div class="btn-new" onclick="resetForm()">Registrar otro miembro</div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>BLACK LEGENDS GLOBAL &nbsp;✦&nbsp; SISTEMA DE ASISTENCIA</footer>
+
+<script>
+// ── NAMES DATA ──────────────────────────────────────────────────────────────
+const NAMES = [
+  "Alexandro Claudino","Alison José Bitencourt","Anderson Serrano",
+  "Andre Santos","André Viana","Cesar Vieira LGND40475",
+  "Claudionir – Caminho dos Príncipes","CoachV.","Daniel Frutuoso Ferreira",
+  "Daniel Maza","Daniel Vale","David Herculano Eusébio","David Padilla",
+  "Denis Lasmar","Diego Pitombo","Dr Juan Carlos Ordóñez Legarda",
+  "Dr Marcelo Barbisan","Eduardo","Erik Avila Gonzalez","Espinoza Samuel",
+  "Esteban Izaguirre","Filipe Rosa","Fredy Azañón","Fredy Rodríguez",
+  "Hamilton Marciano dos Santos Jr.","Ivan Pirela","Jilimar Roa",
+  "Johnnatan","Jorge Leandro","Jose Lobo","José Reynoso LGND 1138",
+  "Joshua Catalán","Julian Castillo","Junior Menezes","Kaue Rejas",
+  "Leno Gomes","Lindomar Jose","Lucas Israel","Luis Beckley",
+  "Marcelo De Souza","Martinho Junior","Mauricio Jaramillo",
+  "Nelsinho","OSMARTH LR","Paulo Fernando","Paulo Henrique Souza Lins",
+  "Paulo Muller","Philipe Câmara","Pierre Davila","Pr Nelson Ruela",
+  "Pr Rafael Pinheiro","Ricardo Bernardes","Ricardo Tavares","Riccelli",
+  "S1 Sergio Espin","Samuel Ramirez","Tato Sales","Tavo Klein",
+  "Tiago Rocha","Tobias Wiens","Vinicios Galera LGND 11549",
+  "Weslley Silva","Yeison Montana"
+];
+
+// Session → Excel column index (0-based: A=0,B=1,C=2,D=3,E=4,F=5,G=6)
+const SESSION_COL = {
+  "02/05/2026": 2,
+  "12/05/2026": 3,
+  "19/05/2026": 4,
+  "26/05/2026": 5,
+  "DESAFÍO 12H ORACIÓN": 6
+};
+
+const SESSIONS_LABELS = [
+  { key:"02/05/2026", label:"Sesión I" },
+  { key:"12/05/2026", label:"Sesión II" },
+  { key:"19/05/2026", label:"Sesión III" },
+  { key:"26/05/2026", label:"Sesión IV" },
+  { key:"DESAFÍO 12H ORACIÓN", label:"Desafío 12H Oración" }
+];
+
+// State
+let state = { name: null, session: null, sessionCol: null, status: null };
+
+// ── NAME SEARCH ──────────────────────────────────────────────────────────────
+const nameSearch = document.getElementById('nameSearch');
+const nameDropdown = document.getElementById('nameDropdown');
+
+nameSearch.addEventListener('input', () => {
+  const q = nameSearch.value.toLowerCase().trim();
+  if (!q) { nameDropdown.classList.remove('open'); return; }
+  const filtered = NAMES.filter(n => n.toLowerCase().includes(q));
+  if (!filtered.length) {
+    nameDropdown.innerHTML = '<div class="no-results">No encontrado…</div>';
+  } else {
+    nameDropdown.innerHTML = filtered.map(n =>
+      `<div class="dropdown-item" onclick="pickName('${n.replace(/'/g,"\\'")}')">
+        ${highlight(n, q)}
+      </div>`
+    ).join('');
+  }
+  nameDropdown.classList.add('open');
+});
+
+function highlight(name, q) {
+  const idx = name.toLowerCase().indexOf(q);
+  if (idx === -1) return name;
+  return name.slice(0,idx) +
+    `<strong style="color:var(--ivory)">${name.slice(idx, idx+q.length)}</strong>` +
+    name.slice(idx+q.length);
+}
+
+nameSearch.addEventListener('keydown', e => {
+  if (e.key === 'Escape') nameDropdown.classList.remove('open');
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.name-search-wrap')) nameDropdown.classList.remove('open');
+});
+
+function pickName(name) {
+  state.name = name;
+  nameSearch.value = name;
+  nameDropdown.classList.remove('open');
+  // unlock session card
+  unlockCard('cardSession', 'step2');
+  updateConfirm();
+}
+
+// ── SESSION ──────────────────────────────────────────────────────────────────
+function selectSession(el) {
+  document.querySelectorAll('.session-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  state.session = el.dataset.session;
+  state.sessionCol = parseInt(el.dataset.col.charCodeAt(0)) - 65; // A=0
+  unlockCard('cardStatus', 'step3');
+  updateConfirm();
+}
+
+// ── STATUS ───────────────────────────────────────────────────────────────────
+function selectStatus(val, el) {
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  state.status = val;
+  unlockCard('cardConfirm', 'step4');
+  updateConfirm();
+}
+
+// ── CONFIRM SUMMARY ──────────────────────────────────────────────────────────
+function updateConfirm() {
+  if (state.name) document.getElementById('cName').textContent = state.name;
+  if (state.session) {
+    const lbl = SESSIONS_LABELS.find(s => s.key === state.session);
+    document.getElementById('cSession').textContent =
+      (lbl ? lbl.label + ' — ' : '') + state.session;
+  }
+  if (state.status) {
+    const map = {
+      P: { cls:'badge-p', label:'PRESENTE' },
+      A: { cls:'badge-a', label:'AUSENTE' },
+      J: { cls:'badge-j', label:'JUSTIFICADO' }
+    };
+    const m = map[state.status];
+    document.getElementById('cStatus').innerHTML =
+      `<span class="status-badge ${m.cls}">${m.label}</span>`;
+  }
+  const ready = state.name && state.session && state.status;
+  document.getElementById('downloadBtn').disabled = !ready;
+}
+
+// ── UNLOCK CARD ──────────────────────────────────────────────────────────────
+function unlockCard(cardId, stepId) {
+  document.getElementById(cardId).style.opacity = '1';
+  document.getElementById(cardId).style.pointerEvents = 'auto';
+  document.getElementById(stepId).classList.add('active');
+  // mark previous step done
+  const stepMap = {step2:'step1', step3:'step2', step4:'step3'};
+  if (stepMap[stepId]) {
+    document.getElementById(stepMap[stepId]).classList.remove('active');
+    document.getElementById(stepMap[stepId]).classList.add('done');
+  }
+  // scroll card into view smoothly
+  setTimeout(() => {
+    document.getElementById(cardId).scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 100);
+}
+
+// ── EXCEL GENERATION ─────────────────────────────────────────────────────────
+function generateExcel() {
+  const btn = document.getElementById('downloadBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  btn.textContent = 'Generando archivo…';
+
+  setTimeout(() => {
+    try {
+      buildAndDownload();
+      // Show success
+      document.getElementById('formScreen').style.display = 'none';
+      document.getElementById('successScreen').classList.add('show');
+    } catch(e) {
+      alert('Error al generar: ' + e.message);
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      btn.textContent = '⬇ Descargar Registro Actualizado';
+    }
+  }, 600);
+}
+
+function buildAndDownload() {
+  const wb = XLSX.utils.book_new();
+
+  // ── Palette ──
+  const BG_MAIN    = "FF060606";
+  const BG_CARBON  = "FF0E0E0E";
+  const BG_GRAFITO = "FF1E1E1E";
+  const BG_ACERO   = "FF323131";
+  const BLUE_ACC   = "FF2A3F6F";
+  const GREEN_BG   = "FF1A3D2B";
+  const RED_BG     = "FF3D1A1A";
+  const GOLD_BG    = "FF3D3010";
+  const GREEN_FG   = "FF4ADE80";
+  const RED_FG     = "FFF87171";
+  const GOLD_FG    = "FFFBBF24";
+  const IVORY      = "FFD6CEC1";
+  const SILVER_DIM = "FFA19A8E";
+
+  const names = NAMES;
+  const sessions = ["02/05/2026","12/05/2026","19/05/2026","26/05/2026","DESAFÍO 12H ORACIÓN"];
+
+  // ── Build worksheet data ──
+  const wsData = [];
+  // Row 1: title
+  wsData.push(["","","","","","","","",""]); // placeholder for banner area
+  for(let r=1;r<12;r++) wsData.push(["","","","","","","","",""]);
+  // Row 12: subtitle
+  wsData.push(["CONTROL DE ASISTENCIA — LEGENDARIOS","","","","","","","",""]);
+  // Row 13: headers
+  wsData.push(["#","Nombre","02/05\n2026","12/05\n2026","19/05\n2026","26/05\n2026","DESAFÍO\n12H ORACIÓN","TOTAL\nASISTENCIAS","% ASIST."]);
+
+  // Data rows start at index 13 (0-based) = Excel row 14
+  const DATA_ROW_START = 14;
+
+  names.forEach((name, i) => {
+    const row = ["","","","","","","","",""];
+    row[0] = i + 1;
+    row[1] = name;
+    // Check if this is the registered member & session
+    const sessionIdx = sessions.indexOf(state.session);
+    if (name === state.name && sessionIdx !== -1) {
+      row[2 + sessionIdx] = state.status;
+    }
+    wsData.push(row);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // ── Column widths ──
+  ws['!cols'] = [
+    {wch:4},{wch:33},{wch:14},{wch:14},{wch:14},{wch:14},{wch:16},{wch:18},{wch:12}
+  ];
+
+  // ── Row heights ──
+  const rowH = [];
+  for(let r=0;r<12;r++) rowH.push({hpt:18}); // banner rows
+  rowH.push({hpt:28}); // subtitle
+  rowH.push({hpt:40}); // header
+  for(let r=0;r<names.length;r++) rowH.push({hpt:22}); // data
+  ws['!rows'] = rowH;
+
+  // ── Merges ──
+  ws['!merges'] = [
+    {s:{r:0,c:0},e:{r:11,c:8}},   // banner area
+    {s:{r:12,c:0},e:{r:12,c:8}},  // subtitle
+  ];
+
+  // ── Style helper ──
+  function cellStyle(fg, bg, bold=false, sz=10, hz="center", italic=false) {
+    return {
+      font: { name:"Arial", sz, bold, italic, color:{rgb:fg} },
+      fill: { patternType:"solid", fgColor:{rgb:bg} },
+      alignment: { horizontal:hz, vertical:"center", wrapText:true },
+      border: {
+        top:{style:"thin",color:{rgb:"FF323131"}},
+        bottom:{style:"thin",color:{rgb:"FF323131"}},
+        left:{style:"thin",color:{rgb:"FF323131"}},
+        right:{style:"thin",color:{rgb:"FF323131"}}
+      }
+    };
+  }
+
+  // Apply styles using SheetJS cell addressing
+  const totalRows = 14 + names.length;
+
+  // Subtitle row (R=12, 0-based)
+  const subAddr = XLSX.utils.encode_cell({r:12,c:0});
+  ws[subAddr] = ws[subAddr] || {v:"CONTROL DE ASISTENCIA — LEGENDARIOS",t:"s"};
+  ws[subAddr].s = cellStyle(IVORY, BG_CARBON, true, 13, "center");
+
+  // Header row (R=13)
+  const hdrs = ["#","Nombre","02/05\n2026","12/05\n2026","19/05\n2026","26/05\n2026","DESAFÍO\n12H ORACIÓN","TOTAL\nASISTENCIAS","% ASIST."];
+  hdrs.forEach((h,ci) => {
+    const addr = XLSX.utils.encode_cell({r:13,c:ci});
+    ws[addr] = ws[addr] || {v:h,t:"s"};
+    ws[addr].s = cellStyle(IVORY, BG_GRAFITO, true, 9, "center");
+  });
+
+  // Data rows
+  names.forEach((name, i) => {
+    const r = 14 + i;
+    const bg = i % 2 === 0 ? BG_MAIN : BG_ACERO;
+
+    // # col
+    const a0 = XLSX.utils.encode_cell({r,c:0});
+    ws[a0] = ws[a0] || {v:i+1,t:"n"};
+    ws[a0].s = cellStyle(SILVER_DIM, bg, false, 9);
+
+    // Name col
+    const a1 = XLSX.utils.encode_cell({r,c:1});
+    ws[a1] = ws[a1] || {v:name,t:"s"};
+    ws[a1].s = cellStyle(IVORY, bg, true, 10, "left");
+
+    // Session cols
+    const sessionIdx = sessions.indexOf(state.session);
+    for(let ci=2; ci<=6; ci++) {
+      const addr = XLSX.utils.encode_cell({r,c:ci});
+      let val = "";
+      if (name === state.name && (ci - 2) === sessionIdx) val = state.status;
+      ws[addr] = {v:val, t:"s"};
+      let sBg = bg;
+      let sFg = IVORY;
+      if (val === "P") { sBg = GREEN_BG; sFg = GREEN_FG; }
+      if (val === "A") { sBg = RED_BG;   sFg = RED_FG;   }
+      if (val === "J") { sBg = GOLD_BG;  sFg = GOLD_FG;  }
+      ws[addr].s = cellStyle(sFg, sBg, val !== "", 10);
+    }
+
+    // Total col
+    const aT = XLSX.utils.encode_cell({r,c:7});
+    ws[aT] = {f:`COUNTIF(C${r+1}:G${r+1},"P")`, t:"n", v:0};
+    ws[aT].s = cellStyle(IVORY, BLUE_ACC, true, 10);
+
+    // % col
+    const aP = XLSX.utils.encode_cell({r,c:8});
+    ws[aP] = {f:`IF(H${r+1}=0,0,H${r+1}/5)`, t:"n", v:0, z:"0%"};
+    ws[aP].s = cellStyle(IVORY, BLUE_ACC, true, 10);
+  });
+
+  // Totals row
+  const tRow = 14 + names.length + 1;
+  const tcAddr = XLSX.utils.encode_cell({r:tRow,c:0});
+  ws['!merges'].push({s:{r:tRow,c:0},e:{r:tRow,c:1}});
+  ws[tcAddr] = {v:"TOTAL PRESENTES POR SESIÓN",t:"s"};
+  ws[tcAddr].s = cellStyle(IVORY, BG_GRAFITO, true, 9);
+  ["C","D","E","F","G"].forEach((col,ci) => {
+    const addr = XLSX.utils.encode_cell({r:tRow,c:2+ci});
+    ws[addr] = {f:`COUNTIF(${col}15:${col}${14+names.length},"P")`,t:"n",v:0};
+    ws[addr].s = cellStyle(GREEN_FG, GREEN_BG, true, 11);
+  });
+
+  // Set range
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:tRow+2,c:8}});
+
+  XLSX.utils.book_append_sheet(wb, ws, "Lista Maestra");
+
+  // ── Download ──
+  const sessionSafe = state.session.replace(/[^\w]/g,"_");
+  const nameSafe = state.name.split(" ")[0];
+  XLSX.writeFile(wb, `BL_Asistencia_${nameSafe}_${sessionSafe}.xlsx`);
+}
+
+// ── RESET ────────────────────────────────────────────────────────────────────
+function resetForm() {
+  state = { name: null, session: null, sessionCol: null, status: null };
+  nameSearch.value = '';
+  document.querySelectorAll('.session-pill').forEach(p => p.classList.remove('selected'));
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+  ['cardSession','cardStatus','cardConfirm'].forEach(id => {
+    document.getElementById(id).style.opacity = '0.4';
+    document.getElementById(id).style.pointerEvents = 'none';
+  });
+  ['step1','step2','step3','step4'].forEach(id => {
+    document.getElementById(id).classList.remove('active','done');
+  });
+  document.getElementById('step1').classList.add('active');
+  document.getElementById('downloadBtn').disabled = true;
+  document.getElementById('downloadBtn').textContent = '⬇ Descargar Registro Actualizado';
+  document.getElementById('downloadBtn').classList.remove('loading');
+  document.getElementById('formScreen').style.display = '';
+  document.getElementById('successScreen').classList.remove('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
