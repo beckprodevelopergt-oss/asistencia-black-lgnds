@@ -204,9 +204,7 @@ footer{text-align:center;padding:28px;color:var(--bg-piedra);font-size:11px;font
       </div>
       <div class="cal-grid" id="calDays"></div>
       <div class="cal-hint">&#9711; Solo puedes seleccionar el martes de la semana en curso</div>
-      <button class="special-btn" id="specialBtn" onclick="toggleSpecial()">
-        ✦ &nbsp; DESAFÍO 12 HORAS DE ORACIÓN (Especial)
-      </button>
+      <!-- Sección DESAFÍO 12 HORAS deshabilitada intencionalmente -->
       <div class="sel-display" id="selDisplay"></div>
     </div>
 
@@ -354,6 +352,16 @@ function isCurrentWeek(date) {
   return date >= start && date <= end;
 }
 
+// Martes exacto permitido dentro de la semana actual.
+function currentWeekTuesday() {
+  const d = startOfCurrentWeek(TODAY);
+  d.setDate(d.getDate() + 1); // lunes + 1 = martes
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+const ALLOWED_TUESDAY_STR = fmtDate(currentWeekTuesday());
+
 function renderCal() {
   document.getElementById('calMonthLabel').textContent = `${MONTHS[calM]} ${calY}`;
 
@@ -385,7 +393,7 @@ function renderCal() {
     el.textContent = d;
     const dateStr = fmtDate(date);
     const isTue = dow === 2;
-    const allowed = isTue && isCurrentWeek(date);
+    const allowed = isTue && dateStr === ALLOWED_TUESDAY_STR;
 
     if (isTue) {
       el.className = 'cal-day tuesday';
@@ -425,28 +433,20 @@ function fmtLabel(d) {
 function pickDate(dateStr, label) {
   S.date = dateStr; S.dateLabel = label;
   specialActive = false;
-  document.getElementById('specialBtn').classList.remove('active');
+  const specialBtn = document.getElementById('specialBtn');
+  if (specialBtn) specialBtn.classList.remove('active');
   renderCal();
   document.getElementById('selDisplay').textContent = `✓ ${label}`;
   unlock('c3','s3','s2'); updateConfirm(); scrollTo('c3');
 }
 function toggleSpecial() {
-  specialActive = !specialActive;
-  const btn = document.getElementById('specialBtn');
-  if (specialActive) {
-    btn.classList.add('active');
-    S.date = 'DESAFÍO-12H'; S.dateLabel = 'Desafío 12 Horas de Oración';
-    renderCal();
-    document.getElementById('selDisplay').textContent = '✓ Desafío 12H Oración (Especial)';
-    unlock('c3','s3','s2'); updateConfirm(); scrollTo('c3');
-  } else {
-    btn.classList.remove('active');
-    S.date = null; S.dateLabel = null;
-    document.getElementById('selDisplay').textContent = '';
-    document.getElementById('c3').classList.add('locked');
-    document.getElementById('c4').classList.add('locked');
-    updateConfirm();
-  }
+  // Desactivado: la regla actual solo permite seleccionar el martes de la semana en curso.
+  specialActive = false;
+  S.date = null;
+  S.dateLabel = null;
+  document.getElementById('selDisplay').textContent = '';
+  renderCal();
+  updateConfirm();
 }
 renderCal();
 
@@ -521,7 +521,8 @@ function resetAll() {
   S={name:null,date:null,dateLabel:null,status:null}; specialActive=false;
   inp.value=''; ddl.classList.remove('open');
   document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('on'));
-  document.getElementById('specialBtn').classList.remove('active');
+  const specialBtn = document.getElementById('specialBtn');
+  if (specialBtn) specialBtn.classList.remove('active');
   document.getElementById('selDisplay').textContent='';
   document.getElementById('errBox').classList.remove('show');
   ['c2','c3','c4'].forEach(id=>document.getElementById(id).classList.add('locked'));
