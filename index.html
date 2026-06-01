@@ -167,11 +167,10 @@ footer{text-align:center;padding:28px;color:var(--bg-piedra);font-size:11px;font
 </div>
 
 <div class="wrap">
-
   <!-- AVISO SI NO ESTÁ CONFIGURADO EL SCRIPT -->
   <div class="cfg-warn" id="cfgWarn">
     <p>⚙ CONFIGURACIÓN PENDIENTE</p>
-    <small>Para activar el envío a Google Sheets, reemplaza <code style="background:rgba(251,191,36,.15);padding:1px 6px;border-radius:2px;font-size:12px">https://script.google.com/macros/s/AKfycbwNPNlFSmwoHRv48efJi5Qd61G-wfrz_VBoeMMGFTIX5vLXmZnm6fEq5OC_oWsMuNEN/exec</code> con la URL de tu Apps Script.<br>Ver instrucciones al final del archivo.</small>
+    <small>Coloca tu URL de Apps Script publicada como aplicación web en la constante SCRIPT_URL.</small>
   </div>
 
   <!-- STEPS -->
@@ -204,7 +203,7 @@ footer{text-align:center;padding:28px;color:var(--bg-piedra);font-size:11px;font
         <button class="cal-nav" id="nextBtn" onclick="changeMonth(1)">&#8250;</button>
       </div>
       <div class="cal-grid" id="calDays"></div>
-      <div class="cal-hint">&#9711; Solo martes están disponibles para selección</div>
+      <div class="cal-hint">&#9711; Solo puedes seleccionar el martes de la semana en curso</div>
       <button class="special-btn" id="specialBtn" onclick="toggleSpecial()">
         ✦ &nbsp; DESAFÍO 12 HORAS DE ORACIÓN (Especial)
       </button>
@@ -247,10 +246,23 @@ footer{text-align:center;padding:28px;color:var(--bg-piedra);font-size:11px;font
 
 <script>
 // ── CONFIGURACIÓN ──────────────────────────────────────────
+// IMPORTANTE: debe ser la URL de implementación de Apps Script que termina en /exec
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNPNlFSmwoHRv48efJi5Qd61G-wfrz_VBoeMMGFTIX5vLXmZnm6fEq5OC_oWsMuNEN/exec";
 
-// Mostrar aviso si no está configurado
-// Script configurado correctamente — aviso oculto
+function isScriptConfigured() {
+  return Boolean(
+    SCRIPT_URL &&
+    SCRIPT_URL.startsWith("https://script.google.com/macros/s/") &&
+    SCRIPT_URL.endsWith("/exec") &&
+    !SCRIPT_URL.includes("TU_URL")
+  );
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const warn = document.getElementById("cfgWarn");
+  if (!warn) return;
+  warn.classList.toggle("show", !isScriptConfigured());
+});
 
 // ── DATOS ──────────────────────────────────────────────────
 const NAMES = [
@@ -318,14 +330,36 @@ function pickName(name) {
 }
 
 // ── CALENDAR ───────────────────────────────────────────────
+// Regla: solo se puede seleccionar el martes de la semana en curso.
+// La semana se calcula de lunes a domingo.
+function startOfCurrentWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // domingo = 0, lunes = 1
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfCurrentWeek(date) {
+  const d = startOfCurrentWeek(date);
+  d.setDate(d.getDate() + 6);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function isCurrentWeek(date) {
+  const start = startOfCurrentWeek(TODAY);
+  const end = endOfCurrentWeek(TODAY);
+  return date >= start && date <= end;
+}
+
 function renderCal() {
   document.getElementById('calMonthLabel').textContent = `${MONTHS[calM]} ${calY}`;
 
-  // nav limits: TODAY's month to TODAY+3 months
-  const minMon = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
-  const maxMon = new Date(TODAY.getFullYear(), TODAY.getMonth()+3, 1);
-  document.getElementById('prevBtn').disabled = new Date(calY,calM,1) <= minMon;
-  document.getElementById('nextBtn').disabled = new Date(calY,calM+1,1) > maxMon;
+  // Solo permitir ver el mes actual
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = true;
 
   const grid = document.getElementById('calDays');
   grid.innerHTML = '';
@@ -350,14 +384,24 @@ function renderCal() {
     const el   = document.createElement('div');
     el.textContent = d;
     const dateStr = fmtDate(date);
-    const isPast  = date < TODAY;
-    const isTue   = dow === 2;
+    const isTue = dow === 2;
+    const allowed = isTue && isCurrentWeek(date);
 
     if (isTue) {
       el.className = 'cal-day tuesday';
-      if (isPast) el.classList.add('past');
-      if (S.date === dateStr && !specialActive) el.classList.add('selected');
-      if (!isPast) el.onclick = () => pickDate(dateStr, fmtLabel(date));
+
+      if (!allowed) {
+        el.classList.add('past');
+        el.title = 'Solo puedes seleccionar el martes de la semana en curso';
+      }
+
+      if (S.date === dateStr && !specialActive) {
+        el.classList.add('selected');
+      }
+
+      if (allowed) {
+        el.onclick = () => pickDate(dateStr, fmtLabel(date));
+      }
     } else {
       el.className = 'cal-day not-tuesday';
     }
@@ -432,7 +476,7 @@ async function submitForm() {
   err.classList.remove('show');
 
   // Si no está configurado, modo demo
-  if (false) {
+  if (!isScriptConfigured()) {
     err.innerHTML = `
       <strong>⚙ Apps Script no configurado aún</strong><br>
       Tu registro: <strong>${S.name}</strong> — ${S.dateLabel} — ${S.status}<br>
@@ -501,18 +545,54 @@ function resetAll() {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 function doGet(e) {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet   = ss.getSheetByName("Asistencia");
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("Asistencia");
+
   if (!sheet) {
     sheet = ss.insertSheet("Asistencia");
-    sheet.appendRow(["Timestamp","Nombre","Fecha","Sesión","Estado"]);
-    sheet.getRange(1,1,1,5).setFontWeight("bold")
-         .setBackground("#1E1E1E").setFontColor("#D6CEC1");
+    sheet.appendRow(["Timestamp", "Nombre", "Fecha", "Sesión", "Estado"]);
+    sheet.getRange(1, 1, 1, 5)
+      .setFontWeight("bold")
+      .setBackground("#1E1E1E")
+      .setFontColor("#D6CEC1");
+
+    sheet.setColumnWidth(1, 180);
+    sheet.setColumnWidth(2, 240);
+    sheet.setColumnWidth(3, 100);
+    sheet.setColumnWidth(4, 220);
+    sheet.setColumnWidth(5, 100);
   }
+
+  if (!e || !e.parameter) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        ok: false,
+        message: "Ejecuta este script desde la URL web app con parámetros."
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   const { nombre, fecha, sesion, estado, timestamp } = e.parameter;
-  sheet.appendRow([timestamp, nombre, fecha, sesion, estado]);
+
+  if (!nombre) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        ok: false,
+        message: "Falta el nombre."
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  sheet.appendRow([
+    timestamp || new Date().toISOString(),
+    nombre,
+    fecha || "",
+    sesion || "",
+    estado || ""
+  ]);
+
   return ContentService
-    .createTextOutput(JSON.stringify({ok:true}))
+    .createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
