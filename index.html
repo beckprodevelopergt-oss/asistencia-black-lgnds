@@ -250,9 +250,7 @@ footer{text-align:center;padding:28px;color:var(--bg-piedra);font-size:11px;font
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNPNlFSmwoHRv48efJi5Qd61G-wfrz_VBoeMMGFTIX5vLXmZnm6fEq5OC_oWsMuNEN/exec";
 
 // Mostrar aviso si no está configurado
-if (SCRIPT_URL === "https://script.google.com/macros/s/AKfycbwNPNlFSmwoHRv48efJi5Qd61G-wfrz_VBoeMMGFTIX5vLXmZnm6fEq5OC_oWsMuNEN/exec") {
-  document.getElementById('cfgWarn').classList.add('show');
-}
+// Script configurado correctamente — aviso oculto
 
 // ── DATOS ──────────────────────────────────────────────────
 const NAMES = [
@@ -434,7 +432,7 @@ async function submitForm() {
   err.classList.remove('show');
 
   // Si no está configurado, modo demo
-  if (SCRIPT_URL === "https://script.google.com/macros/s/AKfycbwNPNlFSmwoHRv48efJi5Qd61G-wfrz_VBoeMMGFTIX5vLXmZnm6fEq5OC_oWsMuNEN/exec") {
+  if (false) {
     err.innerHTML = `
       <strong>⚙ Apps Script no configurado aún</strong><br>
       Tu registro: <strong>${S.name}</strong> — ${S.dateLabel} — ${S.status}<br>
